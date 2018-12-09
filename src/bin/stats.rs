@@ -1,8 +1,8 @@
-use std::io::{self, Read};
-
+extern crate mcmc_decrypt;
 extern crate serde_json;
 
-extern crate mcmc_decrypt;
+use mcmc_decrypt::CorpusStats;
+use std::io::{self, Read};
 
 fn main() {
     // read everything from stdin
@@ -14,7 +14,7 @@ fn main() {
         .expect("Couldn't read from stdin");
 
     // calculate stats for the text
-    let mut stats = mcmc_decrypt::CorpusStats::new();
+    let mut stats = CorpusStats::new();
     stats.read(&corpus).finish();
 
     // output stats to stdout as json
