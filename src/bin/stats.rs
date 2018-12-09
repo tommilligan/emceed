@@ -1,7 +1,7 @@
 extern crate mcmc_decrypt;
 extern crate serde_json;
 
-use mcmc_decrypt::CorpusStats;
+use mcmc_decrypt::stats::CorpusStats;
 use std::io::{self, Read};
 
 fn main() {
