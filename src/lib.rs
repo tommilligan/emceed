@@ -8,29 +8,18 @@ use std::collections::HashMap;
 static CHAR_DEFAULT: char = ' ';
 
 #[derive(Serialize, Deserialize, Debug)]
-struct SymbolStats {
-    frequency: u64,
-    next_symbol: HashMap<char, u64>,
-}
-
-impl SymbolStats {
-    fn new() -> SymbolStats {
-        SymbolStats {
-            frequency: 0,
-            next_symbol: HashMap::new(),
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
 pub struct CorpusStats {
-    symbols: HashMap<char, SymbolStats>,
+    frequency: u64,
+    symbols: HashMap<char, CorpusStats>,
+    ratio: f64,
 }
 
 impl CorpusStats {
     pub fn new() -> CorpusStats {
         CorpusStats {
+            frequency: 0,
             symbols: HashMap::new(),
+            ratio: 0.0,
         }
     }
 
@@ -53,25 +42,43 @@ impl CorpusStats {
 
     // perform expensive tasks after all corpus read
     pub fn finish(&mut self) -> &mut CorpusStats {
-        self.sum_frequencies()
+        self.sum_frequencies().calculate_ratios()
     }
 
     fn increment_transition(&mut self, from: char, to: char) -> &mut CorpusStats {
-        *self
-            .symbols
+        self.symbols
             .entry(from)
-            .or_insert(SymbolStats::new())
-            .next_symbol
+            .or_insert(CorpusStats::new())
+            .symbols
             .entry(to)
-            .or_insert(0) += 1;
+            .or_insert(CorpusStats::new())
+            .frequency += 1;
         self
     }
 
+    fn copy_symbol_keys(&self) -> Vec<char> {
+        self.symbols.keys().map(|k| k.to_owned()).collect()
+    }
+
     fn sum_frequencies(&mut self) -> &mut CorpusStats {
-        let keys: Vec<char> = self.symbols.keys().map(|k| k.to_owned()).collect();
-        for key in keys {
-            let sum = self.symbols.get(&key).unwrap().next_symbol.values().sum();
-            self.symbols.get_mut(&key).unwrap().frequency = sum;
+        // if we have sub frequencies, add them
+        if self.symbols.len() > 0 {
+            // recurse down and get child frequencies first
+            for key in &self.copy_symbol_keys() {
+                self.symbols.get_mut(&key).unwrap().sum_frequencies();
+            }
+            self.frequency = self.symbols.values().map(|stat| stat.frequency).sum();
+        }
+        self
+    }
+
+    fn calculate_ratios(&mut self) -> &mut CorpusStats {
+        for key in &self.copy_symbol_keys() {
+            let mut symbol = self.symbols.get_mut(&key).unwrap();
+            symbol.ratio = symbol.frequency as f64 / self.frequency as f64;
+
+            // recurse down and process children
+            symbol.calculate_ratios();
         }
         self
     }
@@ -84,26 +91,37 @@ mod tests {
     fn test_corpus_stats() {
         let mut stats = CorpusStats::new();
         stats.read("stats").finish();
+
+        // test frequencies
+        assert_eq!(stats.frequency, 6);
         assert_eq!(stats.symbols.get(&'t').unwrap().frequency, 2);
-        assert!(stats.symbols.get(&'z').is_none());
         assert_eq!(
             stats
                 .symbols
                 .get(&'t')
                 .unwrap()
-                .next_symbol
+                .symbols
                 .get(&'a')
-                .unwrap(),
-            &1
+                .unwrap()
+                .frequency,
+            1
         );
-        assert!(
+        assert!(stats.symbols.get(&'z').is_none());
+
+        // test ratios
+        assert_eq!(stats.ratio, 0.0);
+        assert_eq!(stats.symbols.get(&'t').unwrap().ratio, 1.0 / 3.0);
+        assert_eq!(
             stats
                 .symbols
                 .get(&'t')
                 .unwrap()
-                .next_symbol
-                .get(&'t')
-                .is_none()
+                .symbols
+                .get(&'a')
+                .unwrap()
+                .ratio,
+            0.5
         );
+        assert!(stats.symbols.get(&'z').is_none());
     }
 }
