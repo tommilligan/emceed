@@ -1,10 +1,13 @@
 extern crate clap;
 extern crate mcmc_decrypt;
+extern crate rand;
+extern crate rand_pcg;
 extern crate serde_json;
 
 use clap::{App, Arg};
-use mcmc_decrypt::message::{Alphabet, Message};
+use mcmc_decrypt::message::CipherKey;
 use mcmc_decrypt::stats::CorpusStats;
+use rand_pcg::Mcg128Xsl64;
 use std::fs;
 
 fn main() {
@@ -30,18 +33,17 @@ fn main() {
     let stats = fs::read_to_string(stats_file).expect("Could not read stats file");
 
     let message_file = matches.value_of("MESSAGE").unwrap();
-    let mut message = Message {
-        text: fs::read_to_string(message_file).expect("Could not read message file"),
-    };
+    let message = fs::read_to_string(message_file).expect("Could not read message file");
 
     let mut message_stats = CorpusStats::new();
-    message_stats.read(&message.text).finish();
+    message_stats.read(&message).finish();
 
-    let mut alphabet = Alphabet::new("abcdef ");
+    let rng: Mcg128Xsl64 = rand::SeedableRng::seed_from_u64(0);
+    let mut cipher_key = CipherKey::new("abcdef ", rng);
 
     println!("Original message: {:?}", message);
     for _ in 0..10 {
-        message.swap(alphabet.choose(), alphabet.choose());
-        println!("{:?}", message);
+        cipher_key.peturb();
+        println!("{:?}", cipher_key.decipher(&message));
     }
 }
