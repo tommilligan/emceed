@@ -37,13 +37,30 @@ fn main() {
 
     let mut message_stats = CorpusStats::new();
     message_stats.read(&message).finish();
+    println!("Starting with message: {}", &message);
 
     let rng: Mcg128Xsl64 = rand::SeedableRng::seed_from_u64(0);
-    let mut cipher_key = CipherKey::new("abcdef ", rng);
+    //let alphabet = "abcdef".to_string();
+    let alphabet = r###"= -,;:!?/.'"()[]*0123456789abcdefghijklmnopqrstuvwxyz"###.to_string();
 
-    println!("Original message: {:?}", message);
-    for _ in 0..10 {
-        cipher_key.peturb();
-        println!("{:?}", cipher_key.decipher(&message));
+    let cipher_key = CipherKey::new(&alphabet, rng);
+    let plain = cipher_key.decipher(&message);
+    let mut plain_stats = CorpusStats::new();
+    plain_stats.read(&plain).finish();
+
+    for i in 0..10000 {
+        let mut new_key = cipher_key.clone();
+        new_key.perturb();
+        let new_plain = cipher_key.decipher(&message);
+        let mut new_plain_stats = CorpusStats::new();
+        new_plain_stats.read(&new_plain).finish();
+
+        let new_score = message_stats.diff(&new_plain_stats);
+        let old_score = message_stats.diff(&plain_stats);
+
+        if new_score < old_score {
+            plain_stats = new_plain_stats;
+            println!("New message (i={}): {}", i, new_plain);
+        }
     }
 }

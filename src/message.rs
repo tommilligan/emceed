@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use super::utils::random_lookup;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CipherKey<R> {
     alphabet: Vec<char>,
     key: HashMap<char, char>,
@@ -29,11 +29,11 @@ impl<R: Rng> CipherKey<R> {
             .to_owned()
     }
 
-    pub fn peturb(&mut self) -> &mut CipherKey<R> {
+    pub fn perturb(&mut self) -> &mut CipherKey<R> {
         let a_key = self.choose();
         let b_key = self.choose();
-        let a_value = self.key.get(&a_key).expect("Get peturb a").to_owned();
-        let b_value = self.key.get(&b_key).expect("Get peturb b").to_owned();
+        let a_value = self.key.get(&a_key).expect("Get perturb a").to_owned();
+        let b_value = self.key.get(&b_key).expect("Get perturb b").to_owned();
         self.key.insert(a_key, b_value);
         self.key.insert(b_key, a_value);
         self
@@ -72,7 +72,7 @@ mod tests {
         assert_eq!(cipher_key.decipher(ciphertext), "aaccbb");
 
         // test pertubation - should swap two keys
-        cipher_key.peturb();
+        cipher_key.perturb();
         assert!(cipher_key.key != key);
         key.insert('a', 'c');
         key.insert('b', 'a');

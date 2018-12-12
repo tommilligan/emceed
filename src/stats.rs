@@ -43,6 +43,30 @@ impl CorpusStats {
         self.sum_frequencies().calculate_ratios()
     }
 
+    // calculate difference between two sets of stats
+    pub fn diff(&self, other: &CorpusStats) -> f64 {
+        let mut diff = 0.0;
+        for key in self.symbols.keys() {
+            diff +=
+                (self.ratio(&key) - other.ratio(&key)).abs().powi(2) * self.frequency(&key) as f64
+        }
+        diff
+    }
+
+    pub fn ratio(&self, c: &char) -> f64 {
+        match self.symbols.get(c) {
+            Some(x) => x.ratio,
+            None => 0.0,
+        }
+    }
+
+    pub fn frequency(&self, c: &char) -> u64 {
+        match self.symbols.get(c) {
+            Some(x) => x.frequency,
+            None => 0,
+        }
+    }
+
     fn increment_transition(&mut self, from: char, to: char) -> &mut CorpusStats {
         self.symbols
             .entry(from)
